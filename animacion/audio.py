@@ -109,7 +109,7 @@ music = lp(music, 5000)
 # fades at part edges so each part starts/ends cleanly
 def fade_env():
     e = np.ones(N)
-    for o in OFFS[1:]:
+    for o in []:
         i = int(o * SR); w = int(0.25 * SR)
         e[i - w:i] *= np.linspace(1, 0.2, w); e[i:i + w] *= np.linspace(0.2, 1, w)
     w = int(TAIL * SR); e[-w:] *= np.linspace(1, 0, w)
@@ -213,7 +213,15 @@ def s_spin(sec=4.3):
         t += gap; gap *= 1.06
     return out
 
-put(s_spin(), 0.0, 0.8)
+import sys; sys.path.insert(0, ".")
+from gfx import capsule_steps
+def s_pam():
+    n = 0.35
+    body = tone(90, n) * env(int(n * SR), 0.001, 0.07) * 0.9 + lp(noise(n), 1800) * env(int(n * SR), 0.0005, 0.025) * 1.2
+    return body + bp(noise(n), 2500, 8000) * env(int(n * SR), 0.0005, 0.01) * 0.6
+for ts in capsule_steps()[:-1]:
+    put(s_pam(), ts, 0.9)
+put(s_rumble(0.8), capsule_steps()[-1], 0.5)
 put(s_ding(), word_time("cucaracha")[0] - 0.1, 0.8)
 put(s_buzz(), word_time("un mosquito")[0], 0.5)
 put(s_static(), word_time("radios")[0], 0.6)

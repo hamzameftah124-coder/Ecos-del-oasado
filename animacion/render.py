@@ -77,7 +77,19 @@ def draw_content(c, W, H, T, fmt):
         cx, cy, bw, bh = [lerp(a, b, e) for a, b in zip(b0, b1)]
         if sh.get("var"):
             bw *= 0.78; bh *= 0.78
-        if fmt == "v": bw = max(min(bw, bh * 0.78), bw * 0.58)
+        if fmt == "v":
+            bw = max(min(bw, bh * 0.78), bw * 0.58)
+            xs = []
+            for ch in p.get("chars", []):
+                x0 = ch.get("x", 0); x1 = ch.get("x1", x0); xs.append(lerp(x0, x1, ease(u)) + 20 * ch.get("face", 1))
+            r = p.get("roach")
+            if r and not r.get("hidden") and not r.get("behind"):
+                x0 = r.get("x", 0); x1 = r.get("x1", x0); xs.append(lerp(x0, x1, ease(u)) + 120 * r.get("face", 1))
+            xs = [x for x in xs if abs(x - cx) < bw * 1.2]
+            if xs:
+                lo, hi = min(xs), max(xs)
+                if hi - lo < bw * 0.8:
+                    cx = lerp(cx, (lo + hi) / 2, 0.75)
         s = min(W / bw, H / bh)
         sx = math.sin(T * 47) * shake * 14 + math.sin(T * 13) * shake * 8
         sy = math.cos(T * 41) * shake * 12
@@ -104,6 +116,16 @@ def draw_frame(c, T, fmt):
     if fmt == "v":
         c.clear(col("#000000"))
         draw_content(c, 1080, 1920, T, "v")
+        offs = TL["offs"]
+        for i, o in enumerate(offs):
+            if o <= T < o + 2.8:
+                k = clamp((T - o) / 0.25) * clamp((o + 2.8 - T) / 0.3)
+                c.save(); c.translate(540, 250); s = 0.8 + 0.2 * back_out(clamp((T - o) / 0.3)); c.scale(s, s)
+                w = measure(f"PARTE {i+1}/3", 70) + 70
+                rect(c, -w / 2, -78, w, 104, "#14161c", int(220 * k), r=52)
+                rect(c, -w / 2, -78, w, 104, "#ffd400", int(255 * k), r=52, stroke=5)
+                text(c, f"PARTE {i+1}/3", 0, 0, 70, "#ffffff", a=int(255 * k))
+                c.restore()
     else:
         # YouTube: picture slightly reduced with a margin so the whole frame stays visible
         c.clear(col("#0c0e13"))
@@ -124,7 +146,7 @@ def render_range(fmt, t_start, t_end, out):
     W, H = fmt_dims(fmt)
     surf = skia.Surface(W, H)
     ff = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-                           "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-r", str(FPS), out], stdin=subprocess.PIPE)
+                           "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-r", str(FPS), out], stdin=subprocess.PIPE)
     f0 = round(t_start * FPS); f1 = round(t_end * FPS)
     for f in range(f0, f1):
         T = f / FPS

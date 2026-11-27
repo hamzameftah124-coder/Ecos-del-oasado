@@ -245,7 +245,7 @@ def flashlight_origin(who, x, y, face=1, scale=1.0):
 
 # ------------------------------------------------------------------ cockroach
 def draw_roach(c, x, y, t=0.0, face=1, scale=1.0, flat=0.0, walking=False, ant_only=False,
-               shake=0.0, ant_amp=1.0, ant_raise=0.0, eyes=True, alpha=255, speed=1.0, show_cerci=False, body_alpha=255):
+               shake=0.0, ant_amp=1.0, ant_raise=0.0, eyes=True, alpha=255, speed=1.0, show_cerci=False, body_alpha=255, scary=True):
     """x,y = ground point under body center. Body length ~ 520*scale."""
     c.save(); c.translate(x + (math.sin(t * 60) * shake * 6), y); c.scale(scale * face, scale * (1 - 0.55 * flat))
     ph = t * 14 * speed if walking else 0
@@ -269,6 +269,15 @@ def draw_roach(c, x, y, t=0.0, face=1, scale=1.0, flat=0.0, walking=False, ant_o
             c.drawPath(path, P("#6d2c14", body_alpha, 4))
         # shine
         oval(c, -40, by - 38, 120, 12, "#f0a070", 110 if body_alpha == 255 else body_alpha // 2)
+        if scary:
+            ba = int(body_alpha * 0.92)
+            for (bx, byy, br) in ((-150, by - 34, 24), (-40, by - 30, 18), (60, by - 36, 15), (130, by - 30, 12)):
+                path = skia.Path(); path.moveTo(bx - br * 1.6, byy); path.quadTo(bx, byy - br, bx + br * 1.6, byy)
+                path.lineTo(bx + br * 0.9, byy + br * 0.6); path.lineTo(bx + br * 0.6, byy + br * 2.6); path.quadTo(bx + br * 0.35, byy + br * 3.1, bx + br * 0.1, byy + br * 2.6)
+                path.lineTo(bx, byy + br * 0.9); path.lineTo(bx - br * 0.5, byy + br * 1.8); path.quadTo(bx - br * 0.75, byy + br * 2.2, bx - br, byy + br * 1.8)
+                path.lineTo(bx - br * 1.1, byy + br * 0.6); path.close()
+                c.drawPath(path, P("#6e0a10", ba))
+                oval(c, bx - br * 0.4, byy - br * 0.1, br * 0.5, br * 0.18, "#d0333a", ba // 2)
         if show_cerci:
             for dy in (-20, 16):
                 line(c, -246, by + dy, -300, by + dy * 2.2, "#ffd34d", 12)
@@ -290,10 +299,30 @@ def draw_roach(c, x, y, t=0.0, face=1, scale=1.0, flat=0.0, walking=False, ant_o
     hx, hy = 240, by + 8
     if not ant_only:
         oval(c, hx, hy, 40, 34, "#7a3416", body_alpha); oval(c, hx, hy, 40, 34, OUTLINE, body_alpha, stroke=6)
-        if eyes:
+        if scary:
+            # mandibles with blood drips
+            for sgn in (-1, 1):
+                path = skia.Path(); path.moveTo(hx + 30, hy + 14 + sgn * 6); path.quadTo(hx + 62, hy + 20 + sgn * 14, hx + 50, hy + 34 + sgn * 4)
+                c.drawPath(path, P(OUTLINE, body_alpha, 12)); c.drawPath(path, P("#4a1a0a", body_alpha, 7))
+            drip = (t * 0.7) % 1
+            for k, dx in enumerate((44, 56)):
+                dl = 14 + 26 * ((drip + k * 0.4) % 1)
+                line(c, hx + dx, hy + 32, hx + dx, hy + 32 + dl, "#b0121c", 7, body_alpha)
+                circle(c, hx + dx, hy + 36 + dl, 6, "#b0121c", body_alpha)
+            if eyes:
+                for ex, ey in ((hx + 6, hy - 14), (hx + 28, hy - 10)):
+                    radial(c, ex, ey, 40, "#ff2a1a", int(140 * body_alpha / 255))
+                    oval(c, ex, ey, 15, 15, "#ffd23a", body_alpha); oval(c, ex, ey, 15, 15, OUTLINE, body_alpha, stroke=4)
+                    oval(c, ex + 3, ey, 3.5, 11, OUTLINE, body_alpha)
+                # angry brow
+                line(c, hx - 12, hy - 36, hx + 40, hy - 22, OUTLINE, 8, body_alpha)
+        elif eyes:
             for ex, ey in ((hx + 6, hy - 14), (hx + 28, hy - 10)):
                 oval(c, ex, ey, 15, 17, "#ffffff", body_alpha); oval(c, ex, ey, 15, 17, OUTLINE, body_alpha, stroke=4)
                 circle(c, ex + 5, ey + 2, 7, OUTLINE, body_alpha); circle(c, ex + 7, ey - 1, 2.5, "#ffffff", body_alpha)
+    if ant_only and scary and eyes:
+        for ex, ey in ((hx + 6, hy - 14), (hx + 28, hy - 10)):
+            radial(c, ex, ey, 46, "#ff2a1a", 150); oval(c, ex, ey, 11, 11, "#ffd23a"); oval(c, ex + 2, ey, 3, 9, OUTLINE)
     # antennae
     for i, base_a in enumerate((-0.35, -0.05)):
         path = skia.Path(); path.moveTo(hx + 20, hy - 26)
@@ -478,3 +507,15 @@ def light_beam(c, x, y, ang, length, spread, a=70, color="#fff3b0"):
         aa = a0 + (a1 - a0) * i / 12
         path.lineTo(x + math.cos(aa) * length, y + math.sin(aa) * length)
     path.close(); c.drawPath(path, p)
+
+def capsule_steps(total=4.2, n=13, d0=0.13):
+    """start times of each 'pam' step of the capsule carousel (decelerating)."""
+    lo, hi = 1.0, 2.0
+    for _ in range(60):
+        g = (lo + hi) / 2
+        s = sum(d0 * g ** k for k in range(n))
+        if s > total: hi = g
+        else: lo = g
+    ts = [0.0]
+    for k in range(n): ts.append(ts[-1] + d0 * g ** k)
+    return ts  # n+1 values; last = end

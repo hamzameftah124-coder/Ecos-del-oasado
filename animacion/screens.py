@@ -411,7 +411,90 @@ def scene_nosafe(c, W, H, t, u, p, R):
         cross(c, x + 100, 200, clamp((T - marks[i]) * 3), 44)
     c.restore()
 
-SCREENS = {"clock": scene_clock, "nosafe": scene_nosafe, "roulette": scene_roulette, "luck": scene_luck, "daycard": scene_daycard,
+CAPS = ["araña", "mosquito", "avispa", "escorpión", "ciempiés", "hormiga", "polilla", "cucaracha"]
+
+def scary_bug(c, kind, t, s):
+    c.save(); c.scale(s, s)
+    if kind == "cucaracha":
+        c.save(); c.rotate(-90); c.scale(0.6, 0.6); c.translate(-10, 110); draw_roach(c, 0, 0, t, 1, 1.0, ant_amp=0.6); c.restore()
+    else:
+        c.save(); c.scale(3.4, 3.4); icon_bug(c, kind, 1.0, t); c.restore()
+        # glowing red eyes + blood drip
+        radial(c, 70, -14, 40, "#ff2a1a", 150); circle(c, 66, -16, 7, "#ffd23a"); circle(c, 82, -12, 7, "#ffd23a")
+        dl = (t * 50) % 70
+        line(c, 60, 20, 60, 30 + dl, "#b0121c", 7); circle(c, 60, 34 + dl, 7, "#b0121c")
+        circle(c, -30, 10, 16, "#8a0f16", 200); circle(c, 10, -20, 10, "#8a0f16", 200)
+    c.restore()
+
+def draw_capsule(c, x, y, w, h, kind, t, lit=0.0, sharp=1.0):
+    a = int(255 * sharp)
+    # inner glow
+    radial(c, x, y, w * 0.9, "#3fd0c0" if kind != "cucaracha" or lit == 0 else "#ff3a2a", int(70 + 120 * lit))
+    c.save(); c.clipRRect(skia.RRect.MakeRectXY(skia.Rect.MakeXYWH(x - w / 2, y - h / 2, w, h), w * 0.18, w * 0.18), True)
+    c.translate(x, y); scary_bug(c, kind, t, w / 300); c.restore()
+    # glass
+    rect(c, x - w / 2, y - h / 2, w, h, "#bfe6f0", 40, r=w * 0.18)
+    rect(c, x - w / 2 + w * 0.12, y - h / 2 + 30, w * 0.08, h - 60, "#ffffff", 70, r=8)
+    rect(c, x + w / 2 - w * 0.22, y - h / 2 + 30, w * 0.04, h - 60, "#ffffff", 50, r=6)
+    rect(c, x - w / 2, y - h / 2, w, h, "#d8f2f8", a, r=w * 0.18, stroke=5)
+    # caps
+    for yy, hh in ((y - h / 2 - 34, 44), (y + h / 2 - 10, 44)):
+        rect(c, x - w / 2 - 14, yy, w + 28, hh, "#2b2f38", 255, r=14); rect(c, x - w / 2 - 14, yy, w + 28, hh, "#6b7280", 255, r=14, stroke=4)
+        line(c, x - w / 2, yy + 10, x + w / 2, yy + 10, "#c9d3dc" if lit == 0 else "#ffb0a0", 3)
+    if lit > 0:
+        rect(c, x - w / 2 - 20, y - h / 2 - 40, w + 40, h + 90, "#ff3a2a", int(200 * lit), r=w * 0.2, stroke=8)
+
+def scene_capsules(c, W, H, t, u, p, R):
+    lin_grad(c, 0, 0, W, H, "#07080b", "#121318")
+    radial(c, W / 2, H * 0.45, max(W, H) * 0.55, "#26303a", 120)
+    for i in range(7):  # hanging cables
+        x = W * (0.1 + i * 0.14); line(c, x, 0, x + 20, H * 0.25, "#1d2128", 6)
+    vert = H > W
+    cy = H * (0.44 if vert else 0.48)
+    w = 300 if vert else 250; h = 520 if vert else 430
+    sp = w + (90 if vert else 110)
+    steps = capsule_steps()
+    n = len(steps) - 1
+    # position (in capsule units) travelled
+    k = 0; frac = 0.0
+    for i in range(n):
+        if t >= steps[i + 1]: k = i + 1
+        else:
+            frac = ease_out(clamp((t - steps[i]) / min(0.12, steps[i + 1] - steps[i]))); break
+    pos = k + (frac if k < n else 0)
+    final_idx = CAPS.index("cucaracha")
+    # index at center = final_idx - n + pos
+    center = final_idx - n + pos
+    landed = t >= steps[-1]
+    for j in range(-4, 5):
+        idx = math.floor(center) + j
+        off = idx - center
+        x = W / 2 + off * sp
+        if x < -sp or x > W + sp: continue
+        kind = CAPS[idx % len(CAPS)]
+        dist = abs(off)
+        sc = 1.0 - min(dist, 2) * 0.12
+        c.save(); c.translate(x, cy); c.scale(sc, sc); c.translate(-x, -cy)
+        lit = clamp((t - steps[-1]) * 3) if (landed and abs(off) < 0.01) else 0.0
+        draw_capsule(c, x, cy, w, h, kind, t, lit)
+        c.restore()
+        if dist > 0.6:
+            rect(c, x - sp / 2, cy - h, sp, h * 2, "#07080b", int(min(170, 110 * dist)))
+    # arrow + laser
+    ay = cy - h / 2 - 90
+    flick = 0.7 + 0.3 * math.sin(t * 40)
+    line(c, W / 2, ay, W / 2, cy + h / 2 + 30, "#ff3a2a", 4, int(200 * flick))
+    radial(c, W / 2, ay + 10, 70, "#ff3a2a", 150)
+    poly(c, [(W / 2 - 34, ay - 46), (W / 2 + 34, ay - 46), (W / 2, ay + 14)], "#ff5a3a"); poly(c, [(W / 2 - 34, ay - 46), (W / 2 + 34, ay - 46), (W / 2, ay + 14)], "#ffd0c0", stroke=4)
+    if landed:
+        k2 = clamp((t - steps[-1]) * 3)
+        rect(c, 0, 0, W, H, "#ff2a1a", int(90 * (1 - k2)))
+        sc = back_out(k2)
+        c.save(); c.translate(W / 2, cy + h / 2 + (200 if vert else 120)); c.scale(sc, sc)
+        text(c, "¡CUCARACHA!", 0, 0, 120 if vert else 100, "#ff3a2a", stroke=22, stroke_color="#000000")
+        c.restore()
+
+SCREENS = {"clock": scene_clock, "nosafe": scene_nosafe, "roulette": scene_capsules, "luck": scene_luck, "daycard": scene_daycard,
            "f_habitat": fact_habitat, "f_food": fact_food, "f_paradise": fact_paradise, "f_flatten": fact_flatten,
            "f_nocturnal": fact_nocturnal, "f_cerci": fact_cerci, "f_reaction": fact_reaction, "f_water": fact_water,
            "f_plan": fact_plan, "f_recap": fact_recap, "f_bacteria": fact_bacteria, "endcard": scene_endcard}

@@ -169,10 +169,10 @@ def _draw_r(c, t, u, r):
     y = r.get("y", FLOOR)
     if "y1" in r: y = lerp(y, r["y1"], ease(u))
     if r.get("ant_only"):
-        draw_roach(c, rx, y, t, r.get("face", 1), r.get("scale", 0.9), fl, False, True, 0, r.get("amp", 1), r.get("rz", 0), False, 255)
+        draw_roach(c, rx, y, t, r.get("face", 1), r.get("scale", 0.9), fl, False, True, 0, r.get("amp", 1), r.get("rz", 0), r.get("glow", True), 255, scary=not r.get("calm"))
         return
     draw_roach(c, rx, y, t, r.get("face", 1), r.get("scale", 0.9), fl, r.get("walk", False), False, r.get("shake", 0), r.get("amp", 1),
-               r.get("rz", 0), True, al, r.get("speed", 1), False, al)
+               r.get("rz", 0), True, al, r.get("speed", 1), False, al, scary=not r.get("calm"))
 
 def kid_from(c, t, u, ch, y_default):
     x = anim_x(ch, u)
@@ -461,11 +461,13 @@ def draw_garden(c, t, u, p):
     c.save(); c.translate(mx, my); c.scale(-1, 1)
     for k in (-1, 1):
         oval(c, 30, -60 + k * 10 + math.sin(t * 60) * 20 * k, 140, 40, "#d8ecf5", 150)
-    oval(c, 0, 0, 160, 50, "#5a5f6e"); oval(c, 0, 0, 160, 50, OUTLINE, stroke=7)
+    oval(c, 0, 0, 160, 50, "#5a5f6e"); oval(c, -40, 6, 110, 40, "#a3121c"); oval(c, -60, -6, 50, 12, "#e0464e", 160); oval(c, 0, 0, 160, 50, OUTLINE, stroke=7)
     for i in range(4): line(c, -110 + i * 50, -40, -110 + i * 50, 40, "#3b3f4a", 6)
     circle(c, 190, -10, 50, "#4a4e5c"); circle(c, 190, -10, 50, OUTLINE, stroke=6)
-    oval(c, 210, -22, 22, 26, "#d94a3a"); circle(c, 214, -24, 8, OUTLINE)
+    radial(c, 210, -22, 60, "#ff2a1a", 140); oval(c, 210, -22, 22, 26, "#ffd23a"); oval(c, 214, -22, 5, 18, OUTLINE)
     line(c, 230, 10, 400, 70, OUTLINE, 9)
+    dl = (t * 60) % 60
+    line(c, 400, 70, 400, 80 + dl, "#b0121c", 8); circle(c, 400, 84 + dl, 8, "#b0121c")
     for i in range(3):
         line(c, -40 + i * 60, 40, -90 + i * 70, 200, OUTLINE, 7)
     c.restore()
